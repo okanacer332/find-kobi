@@ -27,25 +27,6 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 let socket;
 
-// Override fetch globally to bypass localtunnel reminder page
-if (typeof window !== 'undefined') {
-  const originalFetch = window.fetch;
-  window.fetch = async (url, options = {}) => {
-    try {
-      const headers = new Headers(options.headers || {});
-      headers.set('Bypass-Tunnel-Reminder', 'true');
-      options.headers = headers;
-    } catch (e) {
-      // Fallback if Headers is not supported
-      options.headers = {
-        ...options.headers,
-        'Bypass-Tunnel-Reminder': 'true'
-      };
-    }
-    return originalFetch(url, options);
-  };
-}
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [campaigns, setCampaigns] = useState([]);
@@ -73,11 +54,7 @@ export default function App() {
   // Initialize socket and fetch initial data
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    socket = io(socketUrl, {
-      extraHeaders: {
-        'Bypass-Tunnel-Reminder': 'true'
-      }
-    });
+    socket = io(socketUrl);
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket server');
