@@ -24,10 +24,28 @@ import {
   Info
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const getInitialApiUrl = () => {
+  const saved = localStorage.getItem('VITE_API_URL');
+  if (saved) return saved;
+  return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+};
+
+const getInitialSocketUrl = () => {
+  const saved = localStorage.getItem('VITE_SOCKET_URL');
+  if (saved) return saved;
+  return import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+};
+
 let socket;
 
 export default function App() {
+  const [apiUrl, setApiUrl] = useState(getInitialApiUrl());
+  const [socketUrl, setSocketUrl] = useState(getInitialSocketUrl());
+  const [tempApiUrl, setTempApiUrl] = useState(getInitialApiUrl());
+  const [tempSocketUrl, setTempSocketUrl] = useState(getInitialSocketUrl());
+
+  const API_BASE = apiUrl;
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [campaigns, setCampaigns] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -53,7 +71,6 @@ export default function App() {
 
   // Initialize socket and fetch initial data
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     socket = io(socketUrl);
 
     socket.on('connect', () => {
@@ -100,7 +117,7 @@ export default function App() {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [apiUrl, socketUrl]);
 
   // Auto scroll logs
   useEffect(() => {
@@ -247,6 +264,27 @@ export default function App() {
       console.error('Settings save error:', err);
       alert('Ayarlar kaydedilirken hata oluştu.');
     }
+  };
+
+  const handleSaveConnectionSettings = (e) => {
+    e.preventDefault();
+    localStorage.setItem('VITE_API_URL', tempApiUrl);
+    localStorage.setItem('VITE_SOCKET_URL', tempSocketUrl);
+    setApiUrl(tempApiUrl);
+    setSocketUrl(tempSocketUrl);
+    alert('Bağlantı ayarları güncellendi ve soket yeniden bağlandı!');
+  };
+
+  const handleResetConnectionSettings = () => {
+    localStorage.removeItem('VITE_API_URL');
+    localStorage.removeItem('VITE_SOCKET_URL');
+    const defaultApi = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const defaultSocket = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    setTempApiUrl(defaultApi);
+    setTempSocketUrl(defaultSocket);
+    setApiUrl(defaultApi);
+    setSocketUrl(defaultSocket);
+    alert('Bağlantı ayarları varsayılana sıfırlandı!');
   };
 
   // Filter and search logic for leads
@@ -811,31 +849,85 @@ export default function App() {
               Tarama motoru ve AI modülü yapılandırması.
             </p>
 
-            <div className="card" style={{ maxWidth: '600px' }}>
-              <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Sparkles size={20} style={{ color: 'var(--primary)' }} />
-                Gemini Yapay Zeka Ayarları
-              </h3>
-              
-              <form onSubmit={handleSaveSettings}>
-                <div className="form-group">
-                  <label className="form-label">Gemini API Key</label>
-                  <input 
-                    type="password" 
-                    className="form-input" 
-                    placeholder="AI zenginleştirmesi için API anahtarınızı girin..."
-                    value={settings.geminiApiKey}
-                    onChange={e => setSettings(prev => ({ ...prev, geminiApiKey: e.target.value }))}
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', lineHeight: '1.4' }}>
-                    * API anahtarınız local bilgisayarınızda `db.json` içinde şifrelenmeden saklanır. Gemini API, taranan şirket sitelerinin özetlenmesinde ve şirket kurucusu/sahibi tespiti için kullanılır. Gemini API key almadıysanız kural tabanlı sistemle ücretsiz olarak temel aramalar yapılacaktır.
-                  </p>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div className="card" style={{ maxWidth: '600px', margin: 0 }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Sparkles size={20} style={{ color: 'var(--primary)' }} />
+                  Gemini Yapay Zeka Ayarları
+                </h3>
+                
+                <form onSubmit={handleSaveSettings}>
+                  <div className="form-group">
+                    <label className="form-label">Gemini API Key</label>
+                    <input 
+                      type="password" 
+                      className="form-input" 
+                      placeholder="AI zenginleştirmesi için API anahtarınızı girin..."
+                      value={settings.geminiApiKey}
+                      onChange={e => setSettings(prev => ({ ...prev, geminiApiKey: e.target.value }))}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', lineHeight: '1.4' }}>
+                      * API anahtarınız local bilgisayarınızda `db.json` içinde şifrelenmeden saklanır. Gemini API, taranan şirket sitelerinin özetlenmesinde ve şirket kurucusu/sahibi tespiti için kullanılır. Gemini API key almadıysanız kural tabanlı sistemle ücretsiz olarak temel aramalar yapılacaktır.
+                    </p>
+                  </div>
 
-                <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>
-                  Ayarları Kaydet
-                </button>
-              </form>
+                  <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>
+                    Ayarları Kaydet
+                  </button>
+                </form>
+              </div>
+
+              <div className="card" style={{ maxWidth: '600px', margin: 0 }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Globe size={20} style={{ color: 'var(--primary)' }} />
+                  Bağlantı Ayarları (API & WebSocket)
+                </h3>
+                
+                <form onSubmit={handleSaveConnectionSettings}>
+                  <div className="form-group">
+                    <label className="form-label">Backend API URL</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Örn: http://localhost:5000/api"
+                      value={tempApiUrl}
+                      onChange={e => setTempApiUrl(e.target.value)}
+                      required
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                      Tarayıcının local veya buluttaki API sunucusuna erişeceği adres.
+                    </p>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Backend WebSocket URL</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Örn: http://localhost:5000"
+                      value={tempSocketUrl}
+                      onChange={e => setTempSocketUrl(e.target.value)}
+                      required
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                      Canlı log ve ilerleme akışı için kullanılan soket adresi.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                    <button type="submit" className="btn btn-primary">
+                      Bağlantıyı Kaydet ve Uygula
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary"
+                      onClick={handleResetConnectionSettings}
+                    >
+                      Varsayılana Sıfırla
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
